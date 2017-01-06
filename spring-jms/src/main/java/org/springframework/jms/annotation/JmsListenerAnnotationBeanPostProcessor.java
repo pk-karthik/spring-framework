@@ -34,9 +34,10 @@ import org.springframework.beans.factory.BeanInitializationException;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.SmartInitializingSingleton;
-import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.beans.factory.config.EmbeddedValueResolver;
+import org.springframework.beans.factory.support.MergedBeanDefinitionPostProcessor;
+import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.core.MethodIntrospector;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotatedElementUtils;
@@ -81,7 +82,7 @@ import org.springframework.util.StringValueResolver;
  * @see MethodJmsListenerEndpoint
  */
 public class JmsListenerAnnotationBeanPostProcessor
-		implements BeanPostProcessor, Ordered, BeanFactoryAware, SmartInitializingSingleton {
+		implements MergedBeanDefinitionPostProcessor, Ordered, BeanFactoryAware, SmartInitializingSingleton {
 
 	/**
 	 * The bean name of the default {@link JmsListenerContainerFactory}.
@@ -99,14 +100,14 @@ public class JmsListenerAnnotationBeanPostProcessor
 
 	private StringValueResolver embeddedValueResolver;
 
-	private final MessageHandlerMethodFactoryAdapter messageHandlerMethodFactory = new MessageHandlerMethodFactoryAdapter();
+	private final MessageHandlerMethodFactoryAdapter messageHandlerMethodFactory =
+			new MessageHandlerMethodFactoryAdapter();
 
 	private final JmsListenerEndpointRegistrar registrar = new JmsListenerEndpointRegistrar();
 
 	private final AtomicInteger counter = new AtomicInteger();
 
-	private final Set<Class<?>> nonAnnotatedClasses =
-			Collections.newSetFromMap(new ConcurrentHashMap<Class<?>, Boolean>(64));
+	private final Set<Class<?>> nonAnnotatedClasses = Collections.newSetFromMap(new ConcurrentHashMap<>(64));
 
 
 	@Override
@@ -191,6 +192,10 @@ public class JmsListenerAnnotationBeanPostProcessor
 		this.registrar.afterPropertiesSet();
 	}
 
+
+	@Override
+	public void postProcessMergedBeanDefinition(RootBeanDefinition beanDefinition, Class<?> beanType, String beanName) {
+	}
 
 	@Override
 	public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {

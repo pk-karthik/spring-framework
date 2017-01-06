@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2014 the original author or authors.
+ * Copyright 2002-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,6 @@ import javax.servlet.http.HttpSession;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpMethod;
-import org.springframework.lang.UsesJava8;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.context.request.ServletWebRequest;
@@ -71,7 +70,7 @@ public class ServletRequestMethodArgumentResolver implements HandlerMethodArgume
 				Principal.class.isAssignableFrom(paramType) ||
 				Locale.class == paramType ||
 				TimeZone.class == paramType ||
-				"java.time.ZoneId".equals(paramType.getName()) ||
+				ZoneId.class == paramType ||
 				InputStream.class.isAssignableFrom(paramType) ||
 				Reader.class.isAssignableFrom(paramType) ||
 				HttpMethod.class == paramType);
@@ -111,8 +110,9 @@ public class ServletRequestMethodArgumentResolver implements HandlerMethodArgume
 			TimeZone timeZone = RequestContextUtils.getTimeZone(request);
 			return (timeZone != null ? timeZone : TimeZone.getDefault());
 		}
-		else if ("java.time.ZoneId".equals(paramType.getName())) {
-			return ZoneIdResolver.resolveZoneId(request);
+		else if (ZoneId.class == paramType) {
+			TimeZone timeZone = RequestContextUtils.getTimeZone(request);
+			return (timeZone != null ? timeZone.toZoneId() : ZoneId.systemDefault());
 		}
 		else if (InputStream.class.isAssignableFrom(paramType)) {
 			return request.getInputStream();
@@ -124,19 +124,6 @@ public class ServletRequestMethodArgumentResolver implements HandlerMethodArgume
 			// should never happen...
 			throw new UnsupportedOperationException(
 					"Unknown parameter type: " + paramType + " in method: " + parameter.getMethod());
-		}
-	}
-
-
-	/**
-	 * Inner class to avoid a hard-coded dependency on Java 8's {@link java.time.ZoneId}.
-	 */
-	@UsesJava8
-	private static class ZoneIdResolver {
-
-		public static Object resolveZoneId(HttpServletRequest request) {
-			TimeZone timeZone = RequestContextUtils.getTimeZone(request);
-			return (timeZone != null ? timeZone.toZoneId() : ZoneId.systemDefault());
 		}
 	}
 

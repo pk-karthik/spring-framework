@@ -60,7 +60,7 @@ import org.springframework.util.StringUtils;
  * <p>To facilitate mapping between columns and fields that don't have matching names,
  * try using column aliases in the SQL statement like "select fname as first_name from customer".
  *
- * <p>For 'null' values read from the databasem, we will attempt to call the setter, but in the case of
+ * <p>For 'null' values read from the database, we will attempt to call the setter, but in the case of
  * Java primitives, this causes a TypeMismatchException. This class can be configured (using the
  * primitivesDefaultedForNullValue property) to trap this exception and use the primitives default value.
  * Be aware that if you use the values from the generated bean to update the database the primitive value
@@ -88,7 +88,7 @@ public class BeanPropertyRowMapper<T> implements RowMapper<T> {
 	private boolean primitivesDefaultedForNullValue = false;
 
 	/** ConversionService for binding JDBC values to bean properties */
-	private ConversionService conversionService = new DefaultConversionService();
+	private ConversionService conversionService = DefaultConversionService.getSharedInstance();
 
 	/** Map of the fields we provide mapping for */
 	private Map<String, PropertyDescriptor> mappedFields;
@@ -212,8 +212,8 @@ public class BeanPropertyRowMapper<T> implements RowMapper<T> {
 	 */
 	protected void initialize(Class<T> mappedClass) {
 		this.mappedClass = mappedClass;
-		this.mappedFields = new HashMap<String, PropertyDescriptor>();
-		this.mappedProperties = new HashSet<String>();
+		this.mappedFields = new HashMap<>();
+		this.mappedProperties = new HashSet<>();
 		PropertyDescriptor[] pds = BeanUtils.getPropertyDescriptors(mappedClass);
 		for (PropertyDescriptor pd : pds) {
 			if (pd.getWriteMethod() != null) {
@@ -274,13 +274,13 @@ public class BeanPropertyRowMapper<T> implements RowMapper<T> {
 	@Override
 	public T mapRow(ResultSet rs, int rowNumber) throws SQLException {
 		Assert.state(this.mappedClass != null, "Mapped class was not specified");
-		T mappedObject = BeanUtils.instantiate(this.mappedClass);
+		T mappedObject = BeanUtils.instantiateClass(this.mappedClass);
 		BeanWrapper bw = PropertyAccessorFactory.forBeanPropertyAccess(mappedObject);
 		initBeanWrapper(bw);
 
 		ResultSetMetaData rsmd = rs.getMetaData();
 		int columnCount = rsmd.getColumnCount();
-		Set<String> populatedProperties = (isCheckFullyPopulated() ? new HashSet<String>() : null);
+		Set<String> populatedProperties = (isCheckFullyPopulated() ? new HashSet<>() : null);
 
 		for (int index = 1; index <= columnCount; index++) {
 			String column = JdbcUtils.lookupColumnName(rsmd, index);
@@ -291,7 +291,7 @@ public class BeanPropertyRowMapper<T> implements RowMapper<T> {
 					Object value = getColumnValue(rs, index, pd);
 					if (rowNumber == 0 && logger.isDebugEnabled()) {
 						logger.debug("Mapping column '" + column + "' to property '" + pd.getName() +
-								"' of type [" + ClassUtils.getQualifiedName(pd.getPropertyType()) + "]");
+								"' of type '" + ClassUtils.getQualifiedName(pd.getPropertyType()) + "'");
 					}
 					try {
 						bw.setPropertyValue(pd.getName(), value);
@@ -301,9 +301,9 @@ public class BeanPropertyRowMapper<T> implements RowMapper<T> {
 							if (logger.isDebugEnabled()) {
 								logger.debug("Intercepted TypeMismatchException for row " + rowNumber +
 										" and column '" + column + "' with null value when setting property '" +
-										pd.getName() + "' of type [" +
+										pd.getName() + "' of type '" +
 										ClassUtils.getQualifiedName(pd.getPropertyType()) +
-										"] on object: " + mappedObject, ex);
+										"' on object: " + mappedObject, ex);
 							}
 						}
 						else {
@@ -377,7 +377,7 @@ public class BeanPropertyRowMapper<T> implements RowMapper<T> {
 	 * @param mappedClass the class that each row should be mapped to
 	 */
 	public static <T> BeanPropertyRowMapper<T> newInstance(Class<T> mappedClass) {
-		return new BeanPropertyRowMapper<T>(mappedClass);
+		return new BeanPropertyRowMapper<>(mappedClass);
 	}
 
 }

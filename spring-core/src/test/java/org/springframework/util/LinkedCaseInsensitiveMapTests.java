@@ -25,7 +25,7 @@ import static org.junit.Assert.*;
  */
 public class LinkedCaseInsensitiveMapTests {
 
-	private final LinkedCaseInsensitiveMap<String> map = new LinkedCaseInsensitiveMap<String>();
+	private final LinkedCaseInsensitiveMap<String> map = new LinkedCaseInsensitiveMap<>();
 
 
 	@Test
@@ -72,6 +72,45 @@ public class LinkedCaseInsensitiveMapTests {
 		assertNull(map.getOrDefault("Key", "N"));
 		assertEquals("N", map.getOrDefault("keeeey", "N"));
 		assertEquals("N", map.getOrDefault(new Object(), "N"));
+	}
+
+	@Test
+	public void computeIfAbsentWithExistingValue() {
+		map.put("key", "value1");
+		map.put("KEY", "value2");
+		map.put("Key", "value3");
+		assertEquals("value3", map.computeIfAbsent("key", key -> "value1"));
+		assertEquals("value3", map.computeIfAbsent("KEY", key -> "value2"));
+		assertEquals("value3", map.computeIfAbsent("Key", key -> "value3"));
+	}
+
+	@Test
+	public void computeIfAbsentWithComputedValue() {
+		assertEquals("value1", map.computeIfAbsent("key", key -> "value1"));
+		assertEquals("value1", map.computeIfAbsent("KEY", key -> "value2"));
+		assertEquals("value1", map.computeIfAbsent("Key", key -> "value3"));
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	public void mapClone() {
+		map.put("key", "value1");
+		LinkedCaseInsensitiveMap<String> copy = map.clone();
+		assertEquals("value1", map.get("key"));
+		assertEquals("value1", map.get("KEY"));
+		assertEquals("value1", map.get("Key"));
+		assertEquals("value1", copy.get("key"));
+		assertEquals("value1", copy.get("KEY"));
+		assertEquals("value1", copy.get("Key"));
+		copy.put("Key", "value2");
+		assertEquals(1, map.size());
+		assertEquals(1, copy.size());
+		assertEquals("value1", map.get("key"));
+		assertEquals("value1", map.get("KEY"));
+		assertEquals("value1", map.get("Key"));
+		assertEquals("value2", copy.get("key"));
+		assertEquals("value2", copy.get("KEY"));
+		assertEquals("value2", copy.get("Key"));
 	}
 
 }

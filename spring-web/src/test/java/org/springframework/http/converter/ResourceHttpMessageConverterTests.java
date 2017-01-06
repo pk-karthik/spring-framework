@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,20 +16,14 @@
 
 package org.springframework.http.converter;
 
-import static org.hamcrest.core.Is.*;
-import static org.hamcrest.core.IsInstanceOf.*;
-import static org.junit.Assert.*;
-import static org.mockito.BDDMockito.*;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
@@ -40,6 +34,12 @@ import org.springframework.http.MockHttpInputMessage;
 import org.springframework.http.MockHttpOutputMessage;
 import org.springframework.util.FileCopyUtils;
 
+import static org.hamcrest.core.Is.*;
+import static org.hamcrest.core.IsInstanceOf.*;
+import static org.junit.Assert.*;
+import static org.mockito.BDDMockito.any;
+import static org.mockito.BDDMockito.*;
+
 /**
  * @author Arjen Poutsma
  * @author Kazuki Shimizu
@@ -48,6 +48,9 @@ import org.springframework.util.FileCopyUtils;
 public class ResourceHttpMessageConverterTests {
 
 	private final ResourceHttpMessageConverter converter = new ResourceHttpMessageConverter();
+
+	@Rule
+	public ExpectedException thrown = ExpectedException.none();
 
 
 	@Test
@@ -78,6 +81,17 @@ public class ResourceHttpMessageConverterTests {
 			Resource actualResource = converter.read(InputStreamResource.class, inputMessage);
 			assertThat(actualResource, instanceOf(InputStreamResource.class));
 			assertThat(actualResource.getInputStream(), is(body));
+		}
+	}
+
+	@Test  // SPR-14882
+	public void shouldNotReadInputStreamResource() throws IOException {
+		ResourceHttpMessageConverter noStreamConverter = new ResourceHttpMessageConverter(false);
+		try (InputStream body = getClass().getResourceAsStream("logo.jpg") ) {
+			this.thrown.expect(IllegalStateException.class);
+			MockHttpInputMessage inputMessage = new MockHttpInputMessage(body);
+			inputMessage.getHeaders().setContentType(MediaType.IMAGE_JPEG);
+			noStreamConverter.read(InputStreamResource.class, inputMessage);
 		}
 	}
 

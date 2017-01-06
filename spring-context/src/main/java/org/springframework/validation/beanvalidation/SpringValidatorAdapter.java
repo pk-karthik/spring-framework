@@ -16,6 +16,7 @@
 
 package org.springframework.validation.beanvalidation;
 
+import java.io.Serializable;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -24,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import javax.validation.ConstraintViolation;
+import javax.validation.executable.ExecutableValidator;
 import javax.validation.metadata.BeanDescriptor;
 import javax.validation.metadata.ConstraintDescriptor;
 
@@ -50,7 +52,7 @@ import org.springframework.validation.SmartValidator;
  */
 public class SpringValidatorAdapter implements SmartValidator, javax.validation.Validator {
 
-	private static final Set<String> internalAnnotationAttributes = new HashSet<String>(3);
+	private static final Set<String> internalAnnotationAttributes = new HashSet<>(3);
 
 	static {
 		internalAnnotationAttributes.add("message");
@@ -97,7 +99,7 @@ public class SpringValidatorAdapter implements SmartValidator, javax.validation.
 	@Override
 	public void validate(Object target, Errors errors, Object... validationHints) {
 		if (this.targetValidator != null) {
-			Set<Class<?>> groups = new LinkedHashSet<Class<?>>();
+			Set<Class<?>> groups = new LinkedHashSet<>();
 			if (validationHints != null) {
 				for (Object hint : validationHints) {
 					if (hint instanceof Class) {
@@ -204,10 +206,10 @@ public class SpringValidatorAdapter implements SmartValidator, javax.validation.
 	 * @see org.springframework.validation.DefaultBindingErrorProcessor#getArgumentsForBindError
 	 */
 	protected Object[] getArgumentsForConstraint(String objectName, String field, ConstraintDescriptor<?> descriptor) {
-		List<Object> arguments = new LinkedList<Object>();
+		List<Object> arguments = new LinkedList<>();
 		arguments.add(getResolvableField(objectName, field));
 		// Using a TreeMap for alphabetical ordering of attribute names
-		Map<String, Object> attributesToExpose = new TreeMap<String, Object>();
+		Map<String, Object> attributesToExpose = new TreeMap<>();
 		for (Map.Entry<String, Object> entry : descriptor.getAttributes().entrySet()) {
 			String attributeName = entry.getKey();
 			Object attributeValue = entry.getValue();
@@ -299,12 +301,18 @@ public class SpringValidatorAdapter implements SmartValidator, javax.validation.
 		return (type != null ? this.targetValidator.unwrap(type) : (T) this.targetValidator);
 	}
 
+	@Override
+	public ExecutableValidator forExecutables() {
+		return this.targetValidator.forExecutables();
+	}
+
 
 	/**
 	 * Wrapper for a String attribute which can be resolved via a {@code MessageSource},
 	 * falling back to the original attribute as a default value otherwise.
 	 */
-	private static class ResolvableAttribute implements MessageSourceResolvable {
+	@SuppressWarnings("serial")
+	private static class ResolvableAttribute implements MessageSourceResolvable, Serializable {
 
 		private final String resolvableString;
 

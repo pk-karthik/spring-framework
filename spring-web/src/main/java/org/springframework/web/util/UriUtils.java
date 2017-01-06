@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2015 the original author or authors.
+ * Copyright 2002-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.web.util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
 
 import org.springframework.util.Assert;
 
@@ -34,6 +35,7 @@ import org.springframework.util.Assert;
  * </ul>
  *
  * @author Arjen Poutsma
+ * @author Juergen Hoeller
  * @since 3.0
  * @see <a href="http://www.ietf.org/rfc/rfc3986.txt">RFC 3986</a>
  */
@@ -182,8 +184,26 @@ public abstract class UriUtils {
 	 * @see java.net.URLDecoder#decode(String, String)
 	 */
 	public static String decode(String source, String encoding) throws UnsupportedEncodingException {
-		Assert.notNull(source, "Source must not be null");
-		Assert.hasLength(encoding, "Encoding must not be empty");
+		return decode(source, Charset.forName(encoding));
+	}
+
+	/**
+	 * Decodes the given encoded source String into an URI. Based on the following rules:
+	 * <ul>
+	 * <li>Alphanumeric characters {@code "a"} through {@code "z"}, {@code "A"} through {@code "Z"}, and
+	 * {@code "0"} through {@code "9"} stay the same.</li>
+	 * <li>Special characters {@code "-"}, {@code "_"}, {@code "."}, and {@code "*"} stay the same.</li>
+	 * <li>A sequence "{@code %<i>xy</i>}" is interpreted as a hexadecimal representation of the character.</li>
+	 * </ul>
+	 * @param source the source string
+	 * @param charset the character set
+	 * @return the decoded URI
+	 * @throws IllegalArgumentException when the given source contains invalid encoded sequences
+	 * @see java.net.URLDecoder#decode(String, String)
+	 */
+	public static String decode(String source, Charset charset) {
+		Assert.notNull(source, "'source' must not be null");
+		Assert.notNull(charset, "'charset' must not be null");
 		int length = source.length();
 		ByteArrayOutputStream bos = new ByteArrayOutputStream(length);
 		boolean changed = false;
@@ -210,7 +230,31 @@ public abstract class UriUtils {
 				bos.write(ch);
 			}
 		}
-		return (changed ? new String(bos.toByteArray(), encoding) : source);
+		return (changed ? new String(bos.toByteArray(), charset) : source);
+	}
+
+	/**
+	 * Extract the file extension from the given URI path.
+	 * @param path the URI path (e.g. "/products/index.html")
+	 * @return the extracted file extension (e.g. "html")
+	 * @since 4.3.2
+	 */
+	public static String extractFileExtension(String path) {
+		int end = path.indexOf('?');
+		if (end == -1) {
+			end = path.indexOf('#');
+			if (end == -1) {
+				end = path.length();
+			}
+		}
+		int begin = path.lastIndexOf('/', end) + 1;
+		int paramIndex = path.indexOf(';', begin);
+		end = (paramIndex != -1 && paramIndex < end ? paramIndex : end);
+		int extIndex = path.lastIndexOf('.', end);
+		if (extIndex != -1 && extIndex > begin) {
+			return path.substring(extIndex + 1, end);
+		}
+		return null;
 	}
 
 }

@@ -16,7 +16,6 @@
 
 package org.springframework.cache;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -128,8 +127,8 @@ public class CacheReproTests {
 		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(Spr13081Config.class);
 		Spr13081Service bean = context.getBean(Spr13081Service.class);
 
-		thrown.expect(IllegalStateException.class);
-		thrown.expectMessage(MyCacheResolver.class.getName());
+		this.thrown.expect(IllegalStateException.class);
+		this.thrown.expectMessage(MyCacheResolver.class.getName());
 		bean.getSimple(null);
 	}
 
@@ -150,6 +149,22 @@ public class CacheReproTests {
 		assertSame(tb2, cache.get("tb1").get());
 	}
 
+	@Test
+	public void spr14853AdaptsToOptionalWithSync() {
+		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(Spr14853Config.class);
+		Spr14853Service bean = context.getBean(Spr14853Service.class);
+		Cache cache = context.getBean(CacheManager.class).getCache("itemCache");
+
+		TestBean tb = new TestBean("tb1");
+		bean.insertItem(tb);
+		assertSame(tb, bean.findById("tb1").get());
+		assertSame(tb, cache.get("tb1").get());
+
+		cache.clear();
+		TestBean tb2 = bean.findById("tb1").get();
+		assertNotSame(tb, tb2);
+		assertSame(tb2, cache.get("tb1").get());
+	}
 
 	@Configuration
 	@EnableCaching
@@ -235,7 +250,7 @@ public class CacheReproTests {
 		@Bean
 		public CacheManager cacheManager() {
 			SimpleCacheManager cacheManager = new SimpleCacheManager();
-			cacheManager.setCaches(Arrays.asList(cache()));
+			cacheManager.setCaches(Collections.singletonList(cache()));
 			return cacheManager;
 		}
 
@@ -339,6 +354,35 @@ public class CacheReproTests {
 		@Bean
 		public Spr14230Service service() {
 			return new Spr14230Service();
+		}
+	}
+
+	public static class Spr14853Service {
+
+		@Cacheable(value = "itemCache", sync = true)
+		public Optional<TestBean> findById(String id) {
+			return Optional.of(new TestBean(id));
+		}
+
+		@CachePut(cacheNames = "itemCache", key = "#item.name")
+		public TestBean insertItem(TestBean item) {
+			return item;
+		}
+
+	}
+
+	@Configuration
+	@EnableCaching
+	public static class Spr14853Config {
+
+		@Bean
+		public CacheManager cacheManager() {
+			return new ConcurrentMapCacheManager();
+		}
+
+		@Bean
+		public Spr14853Service service() {
+			return new Spr14853Service();
 		}
 	}
 
