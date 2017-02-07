@@ -17,11 +17,13 @@
 package org.springframework.http.server.reactive;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.util.Enumeration;
 import java.util.Map;
+import java.util.Optional;
 import javax.servlet.AsyncContext;
 import javax.servlet.AsyncEvent;
 import javax.servlet.AsyncListener;
@@ -32,6 +34,8 @@ import javax.servlet.http.HttpServletRequest;
 
 import reactor.core.publisher.Flux;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.http.HttpCookie;
@@ -52,11 +56,18 @@ import org.springframework.util.StringUtils;
  */
 public class ServletServerHttpRequest extends AbstractServerHttpRequest {
 
+	protected final Log logger = LogFactory.getLog(getClass());
+
+
 	private final HttpServletRequest request;
 
 	private final RequestBodyPublisher bodyPublisher;
 
 	private final Object cookieLock = new Object();
+
+	private final DataBufferFactory bufferFactory;
+
+	private final byte[] buffer;
 
 
 	public ServletServerHttpRequest(HttpServletRequest request, AsyncContext asyncContext,
@@ -68,12 +79,14 @@ public class ServletServerHttpRequest extends AbstractServerHttpRequest {
 		Assert.isTrue(bufferSize > 0, "'bufferSize' must be higher than 0");
 
 		this.request = request;
+		this.bufferFactory = bufferFactory;
+		this.buffer = new byte[bufferSize];
 
 		asyncContext.addListener(new RequestAsyncListener());
 
 		// Tomcat expects ReadListener registration on initial thread
 		ServletInputStream inputStream = request.getInputStream();
-		this.bodyPublisher = new RequestBodyPublisher(inputStream, bufferFactory, bufferSize);
+		this.bodyPublisher = new RequestBodyPublisher(inputStream);
 		this.bodyPublisher.registerReadListener();
 	}
 
@@ -165,8 +178,33 @@ public class ServletServerHttpRequest extends AbstractServerHttpRequest {
 	}
 
 	@Override
+	public Optional<InetSocketAddress> getRemoteAddress() {
+		return Optional.of(new InetSocketAddress(
+				this.request.getRemoteHost(), this.request.getRemotePort()));
+	}
+
+	@Override
 	public Flux<DataBuffer> getBody() {
 		return Flux.from(this.bodyPublisher);
+	}
+
+	/**
+	 * Read from the request body InputStream and return a DataBuffer.
+	 * Invoked only when {@link ServletInputStream#isReady()} returns "true".
+	 */
+	protected DataBuffer readFromInputStream() throws IOException {
+		int read = this.request.getInputStream().read(this.buffer);
+		if (logger.isTraceEnabled()) {
+			logger.trace("read:" + read);
+		}
+
+		if (read > 0) {
+			DataBuffer dataBuffer = this.bufferFactory.allocateBuffer(read);
+			dataBuffer.write(this.buffer, 0, read);
+			return dataBuffer;
+		}
+
+		return null;
 	}
 
 
@@ -193,21 +231,14 @@ public class ServletServerHttpRequest extends AbstractServerHttpRequest {
 		}
 	}
 
-	private static class RequestBodyPublisher extends AbstractListenerReadPublisher<DataBuffer> {
+	private class RequestBodyPublisher extends AbstractListenerReadPublisher<DataBuffer> {
 
 		private final ServletInputStream inputStream;
 
-		private final DataBufferFactory bufferFactory;
 
-		private final byte[] buffer;
-
-
-		public RequestBodyPublisher(ServletInputStream inputStream,
-				DataBufferFactory bufferFactory, int bufferSize) {
+		public RequestBodyPublisher(ServletInputStream inputStream) {
 
 			this.inputStream = inputStream;
-			this.bufferFactory = bufferFactory;
-			this.buffer = new byte[bufferSize];
 		}
 
 		public void registerReadListener() throws IOException {
@@ -224,16 +255,7 @@ public class ServletServerHttpRequest extends AbstractServerHttpRequest {
 		@Override
 		protected DataBuffer read() throws IOException {
 			if (this.inputStream.isReady()) {
-				int read = this.inputStream.read(this.buffer);
-				if (logger.isTraceEnabled()) {
-					logger.trace("read:" + read);
-				}
-
-				if (read > 0) {
-					DataBuffer dataBuffer = this.bufferFactory.allocateBuffer(read);
-					dataBuffer.write(this.buffer, 0, read);
-					return dataBuffer;
-				}
+				return readFromInputStream();
 			}
 			return null;
 		}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,6 +49,7 @@ public abstract class AbstractClientHttpRequest implements ClientHttpRequest {
 	 */
 	private enum State {NEW, COMMITTING, COMMITTED}
 
+
 	private final HttpHeaders headers;
 
 	private final MultiValueMap<String, HttpCookie> cookies;
@@ -63,7 +64,7 @@ public abstract class AbstractClientHttpRequest implements ClientHttpRequest {
 	}
 
 	public AbstractClientHttpRequest(HttpHeaders headers) {
-		Assert.notNull(headers);
+		Assert.notNull(headers, "HttpHeaders must not be null");
 		this.headers = headers;
 		this.cookies = new LinkedMultiValueMap<>();
 	}
@@ -85,12 +86,23 @@ public abstract class AbstractClientHttpRequest implements ClientHttpRequest {
 		return this.cookies;
 	}
 
+	@Override
+	public void beforeCommit(Supplier<? extends Mono<Void>> action) {
+		Assert.notNull(action, "Action must not be null");
+		this.commitActions.add(action);
+	}
+
+	@Override
+	public boolean isCommitted() {
+		return this.state.get() != State.NEW;
+	}
+
 	/**
 	 * A variant of {@link #doCommit(Supplier)} for a request without body.
 	 * @return a completion publisher
 	 */
 	protected Mono<Void> doCommit() {
-		return (this.state.get() == State.NEW ? doCommit(null) : Mono.empty());
+		return doCommit(null);
 	}
 
 	/**
@@ -101,14 +113,14 @@ public abstract class AbstractClientHttpRequest implements ClientHttpRequest {
 	 */
 	protected Mono<Void> doCommit(Supplier<? extends Mono<Void>> writeAction) {
 
-		if (!this.state.compareAndSet(AbstractClientHttpRequest.State.NEW, AbstractClientHttpRequest.State.COMMITTING)) {
+		if (!this.state.compareAndSet(State.NEW, State.COMMITTING)) {
 			return Mono.empty();
 		}
 
 		this.commitActions.add(() -> {
 			applyHeaders();
 			applyCookies();
-			this.state.set(AbstractClientHttpRequest.State.COMMITTED);
+			this.state.set(State.COMMITTED);
 			return Mono.empty();
 		});
 
@@ -122,12 +134,6 @@ public abstract class AbstractClientHttpRequest implements ClientHttpRequest {
 		return Flux.concat(actions).next();
 	}
 
-	@Override
-	public void beforeCommit(Supplier<? extends Mono<Void>> action) {
-		Assert.notNull(action);
-		this.commitActions.add(action);
-	}
-
 	/**
 	 * Implement this method to apply header changes from {@link #getHeaders()}
 	 * to the underlying response. This method is called once only.
@@ -139,6 +145,5 @@ public abstract class AbstractClientHttpRequest implements ClientHttpRequest {
 	 * underlying response. This method is called once only.
 	 */
 	protected abstract void applyCookies();
-
 
 }

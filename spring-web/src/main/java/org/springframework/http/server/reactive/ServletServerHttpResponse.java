@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,6 +43,7 @@ import org.springframework.util.Assert;
 
 /**
  * Adapt {@link ServerHttpResponse} to the Servlet {@link HttpServletResponse}.
+ *
  * @author Rossen Stoyanchev
  * @since 5.0
  */
@@ -66,7 +67,7 @@ public class ServletServerHttpResponse extends AbstractListenerServerHttpRespons
 
 		Assert.notNull(response, "HttpServletResponse must not be null");
 		Assert.notNull(bufferFactory, "DataBufferFactory must not be null");
-		Assert.isTrue(bufferSize > 0, "'bufferSize' must be greater than 0");
+		Assert.isTrue(bufferSize > 0, "Buffer size must be greater than 0");
 
 		this.response = response;
 		this.bufferSize = bufferSize;
@@ -132,6 +133,25 @@ public class ServletServerHttpResponse extends AbstractListenerServerHttpRespons
 		return processor;
 	}
 
+	/**
+	 * Write the DataBuffer to the response body OutputStream.
+	 * Invoked only when {@link ServletOutputStream#isReady()} returns "true"
+	 * and the readable bytes in the DataBuffer is greater than 0.
+	 * @return the number of bytes written
+	 */
+	protected int writeToOutputStream(DataBuffer dataBuffer) throws IOException {
+		ServletOutputStream outputStream = response.getOutputStream();
+		InputStream input = dataBuffer.asInputStream();
+		int bytesWritten = 0;
+		byte[] buffer = new byte[this.bufferSize];
+		int bytesRead;
+		while (outputStream.isReady() && (bytesRead = input.read(buffer)) != -1) {
+			outputStream.write(buffer, 0, bytesRead);
+			bytesWritten += bytesRead;
+		}
+		return bytesWritten;
+	}
+
 	private void flush() throws IOException {
 		ServletOutputStream outputStream = this.response.getOutputStream();
 		if (outputStream.isReady()) {
@@ -191,6 +211,7 @@ public class ServletServerHttpResponse extends AbstractListenerServerHttpRespons
 		}
 	}
 
+
 	private class ResponseBodyWriteListener implements WriteListener {
 
 		@Override
@@ -209,13 +230,14 @@ public class ServletServerHttpResponse extends AbstractListenerServerHttpRespons
 		}
 	}
 
+
 	private class ResponseBodyFlushProcessor extends AbstractListenerWriteFlushProcessor<DataBuffer> {
 
 		@Override
 		protected Processor<? super DataBuffer, Void> createWriteProcessor() {
 			try {
 				ServletOutputStream outputStream = response.getOutputStream();
-				bodyProcessor = new ResponseBodyProcessor(outputStream, bufferSize);
+				bodyProcessor = new ResponseBodyProcessor(outputStream);
 				return bodyProcessor;
 			}
 			catch (IOException ex) {
@@ -232,16 +254,13 @@ public class ServletServerHttpResponse extends AbstractListenerServerHttpRespons
 		}
 	}
 
+
 	private class ResponseBodyProcessor extends AbstractListenerWriteProcessor<DataBuffer> {
 
 		private final ServletOutputStream outputStream;
 
-		private final int bufferSize;
-
-
-		public ResponseBodyProcessor(ServletOutputStream outputStream, int bufferSize) {
+		public ResponseBodyProcessor(ServletOutputStream outputStream) {
 			this.outputStream = outputStream;
-			this.bufferSize = bufferSize;
 		}
 
 		@Override
@@ -252,7 +271,7 @@ public class ServletServerHttpResponse extends AbstractListenerServerHttpRespons
 		@Override
 		protected void releaseData() {
 			if (logger.isTraceEnabled()) {
-				logger.trace("releaseBuffer: " + this.currentData);
+				logger.trace("releaseData: " + this.currentData);
 			}
 			DataBufferUtils.release(this.currentData);
 			this.currentData = null;
@@ -275,30 +294,17 @@ public class ServletServerHttpResponse extends AbstractListenerServerHttpRespons
 			if (this.logger.isTraceEnabled()) {
 				this.logger.trace("write: " + dataBuffer + " ready: " + ready);
 			}
-			if (ready) {
-				int total = dataBuffer.readableByteCount();
-				int written = writeDataBuffer(dataBuffer);
-
+			int remaining = dataBuffer.readableByteCount();
+			if (ready && remaining > 0) {
+				int written = writeToOutputStream(dataBuffer);
 				if (this.logger.isTraceEnabled()) {
-					this.logger.trace("written: " + written + " total: " + total);
+					this.logger.trace("written: " + written + " total: " + remaining);
 				}
-				return written == total;
+				return written == remaining;
 			}
 			else {
 				return false;
 			}
-		}
-
-		private int writeDataBuffer(DataBuffer dataBuffer) throws IOException {
-			InputStream input = dataBuffer.asInputStream();
-			int bytesWritten = 0;
-			byte[] buffer = new byte[this.bufferSize];
-			int bytesRead = -1;
-			while (this.outputStream.isReady() && (bytesRead = input.read(buffer)) != -1) {
-				this.outputStream.write(buffer, 0, bytesRead);
-				bytesWritten += bytesRead;
-			}
-			return bytesWritten;
 		}
 	}
 

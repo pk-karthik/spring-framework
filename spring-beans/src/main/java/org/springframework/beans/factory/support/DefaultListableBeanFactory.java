@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1138,6 +1138,15 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		Class<?> type = descriptor.getDependencyType();
 		if (type.isArray()) {
 			Class<?> componentType = type.getComponentType();
+			ResolvableType resolvableType = descriptor.getResolvableType();
+			Class<?> resolvedArrayType = resolvableType.resolve();
+			if (resolvedArrayType != null && resolvedArrayType != type) {
+				type = resolvedArrayType;
+				componentType = resolvableType.getComponentType().resolve();
+			}
+			if (componentType == null) {
+				return null;
+			}
 			Map<String, Object> matchingBeans = findAutowireCandidates(beanName, componentType,
 					new MultiElementDescriptor(descriptor));
 			if (matchingBeans.isEmpty()) {
@@ -1154,7 +1163,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			return result;
 		}
 		else if (Collection.class.isAssignableFrom(type) && type.isInterface()) {
-			Class<?> elementType = descriptor.getCollectionType();
+			Class<?> elementType = descriptor.getResolvableType().asCollection().resolveGeneric();
 			if (elementType == null) {
 				return null;
 			}
@@ -1173,12 +1182,13 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			}
 			return result;
 		}
-		else if (Map.class.isAssignableFrom(type) && type.isInterface()) {
-			Class<?> keyType = descriptor.getMapKeyType();
+		else if (Map.class == type) {
+			ResolvableType mapType = descriptor.getResolvableType().asMap();
+			Class<?> keyType = mapType.resolveGeneric(0);
 			if (String.class != keyType) {
 				return null;
 			}
-			Class<?> valueType = descriptor.getMapValueType();
+			Class<?> valueType = mapType.resolveGeneric(1);
 			if (valueType == null) {
 				return null;
 			}

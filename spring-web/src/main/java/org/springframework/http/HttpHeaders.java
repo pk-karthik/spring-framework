@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -442,7 +442,6 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	/**
 	 * Set the acceptable language ranges, as specified by the
 	 * {@literal Accept-Language} header.
-	 * @see Locale.LanguageRange
 	 * @since 5.0
 	 */
 	public void setAcceptLanguage(List<Locale.LanguageRange> languages) {
@@ -464,7 +463,6 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	 * {@link #getAcceptLanguageAsLocale()} or if you need to filter based on
 	 * a list of supporeted locales you can pass the returned list to
 	 * {@link Locale#filter(List, Collection)}.
-	 * @see Locale.LanguageRange
 	 * @since 5.0
 	 */
 	public List<Locale.LanguageRange> getAcceptLanguage() {
@@ -1335,12 +1333,14 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	 */
 	@Override
 	public void add(String headerName, String headerValue) {
-		List<String> headerValues = this.headers.get(headerName);
-		if (headerValues == null) {
-			headerValues = new LinkedList<>();
-			this.headers.put(headerName, headerValues);
-		}
+		List<String> headerValues = this.headers.computeIfAbsent(headerName, k -> new LinkedList<>());
 		headerValues.add(headerValue);
+	}
+
+	@Override
+	public void addAll(String key, List<String> values) {
+		List<String> currentValues = this.headers.computeIfAbsent(key, k -> new LinkedList<>());
+		currentValues.addAll(values);
 	}
 
 	/**

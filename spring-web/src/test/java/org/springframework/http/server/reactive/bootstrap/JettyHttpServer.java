@@ -21,27 +21,25 @@ import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 
-import org.springframework.beans.factory.InitializingBean;
+import org.springframework.http.server.reactive.JettyHttpHandlerAdapter;
 import org.springframework.http.server.reactive.ServletHttpHandlerAdapter;
-import org.springframework.util.Assert;
 
 /**
  * @author Rossen Stoyanchev
  */
-public class JettyHttpServer extends HttpServerSupport implements HttpServer, InitializingBean {
+public class JettyHttpServer extends AbstractHttpServer {
 
 	private Server jettyServer;
 
 	private ServletContextHandler contextHandler;
 
-	private boolean running;
-
 
 	@Override
-	public void afterPropertiesSet() throws Exception {
+	protected void initServer() throws Exception {
+
 		this.jettyServer = new Server();
 
-		ServletHttpHandlerAdapter servlet = initServletHttpHandlerAdapter();
+		ServletHttpHandlerAdapter servlet = createServletAdapter();
 		ServletHolder servletHolder = new ServletHolder(servlet);
 
 		this.contextHandler = new ServletContextHandler(this.jettyServer, "", false, false);
@@ -54,59 +52,54 @@ public class JettyHttpServer extends HttpServerSupport implements HttpServer, In
 		this.jettyServer.addConnector(connector);
 	}
 
-	private ServletHttpHandlerAdapter initServletHttpHandlerAdapter() {
-		if (getHttpHandlerMap() != null) {
-			return new ServletHttpHandlerAdapter(getHttpHandlerMap());
-		}
-		else {
-			Assert.notNull(getHttpHandler());
-			return new ServletHttpHandlerAdapter(getHttpHandler());
-		}
+	private ServletHttpHandlerAdapter createServletAdapter() {
+		return getHttpHandlerMap() != null ? new JettyHttpHandlerAdapter(getHttpHandlerMap()) :
+				new JettyHttpHandlerAdapter(getHttpHandler());
 	}
 
 	@Override
-	public void start() {
-		if (!this.running) {
-			try {
-				this.running = true;
-				this.jettyServer.start();
-			}
-			catch (Exception ex) {
-				throw new IllegalStateException(ex);
-			}
-		}
+	protected void startInternal() throws Exception {
+		this.jettyServer.start();
+		setPort(((ServerConnector) this.jettyServer.getConnectors()[0]).getLocalPort());
 	}
 
 	@Override
-	public void stop() {
-		if (this.running) {
+	protected void stopInternal() throws Exception {
+		try {
+			if (this.contextHandler.isRunning()) {
+				this.contextHandler.stop();
+			}
+		}
+		finally {
 			try {
-				this.running = false;
-				if (this.contextHandler.isRunning()) {
-					this.contextHandler.stop();
+				if (this.jettyServer.isRunning()) {
+					this.jettyServer.setStopTimeout(5000);
+					this.jettyServer.stop();
+					this.jettyServer.destroy();
 				}
 			}
 			catch (Exception ex) {
-				throw new IllegalStateException(ex);
-			}
-			finally {
-				try {
-					if (this.jettyServer.isRunning()) {
-						this.jettyServer.setStopTimeout(5000);
-						this.jettyServer.stop();
-						this.jettyServer.destroy();
-					}
-				}
-				catch (Exception ex) {
-					throw new IllegalStateException(ex);
-				}
+				// ignore
 			}
 		}
 	}
 
 	@Override
-	public boolean isRunning() {
-		return this.running;
+	protected void resetInternal() {
+		try {
+			if (this.jettyServer.isRunning()) {
+				this.jettyServer.setStopTimeout(5000);
+				this.jettyServer.stop();
+				this.jettyServer.destroy();
+			}
+		}
+		catch (Exception ex) {
+			throw new IllegalStateException(ex);
+		}
+		finally {
+			this.jettyServer = null;
+			this.contextHandler = null;
+		}
 	}
 
 }

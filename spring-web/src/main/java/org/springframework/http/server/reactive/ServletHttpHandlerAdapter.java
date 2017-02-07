@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,11 +50,11 @@ public class ServletHttpHandlerAdapter extends HttpHandlerAdapterSupport impleme
 	private static final int DEFAULT_BUFFER_SIZE = 8192;
 
 
+	private int bufferSize = DEFAULT_BUFFER_SIZE;
+
 	// Servlet is based on blocking I/O, hence the usage of non-direct, heap-based buffers
 	// (i.e. 'false' as constructor argument)
 	private DataBufferFactory dataBufferFactory = new DefaultDataBufferFactory(false);
-
-	private int bufferSize = DEFAULT_BUFFER_SIZE;
 
 
 	public ServletHttpHandlerAdapter(HttpHandler httpHandler) {
@@ -66,21 +66,12 @@ public class ServletHttpHandlerAdapter extends HttpHandlerAdapterSupport impleme
 	}
 
 
-	public void setDataBufferFactory(DataBufferFactory dataBufferFactory) {
-		Assert.notNull(dataBufferFactory, "'dataBufferFactory' must not be null");
-		this.dataBufferFactory = dataBufferFactory;
-	}
-
-	public DataBufferFactory getDataBufferFactory() {
-		return this.dataBufferFactory;
-	}
-
 	/**
 	 * Set the size of the input buffer used for reading in bytes.
 	 * <p>By default this is set to 8192.
 	 */
 	public void setBufferSize(int bufferSize) {
-		Assert.isTrue(bufferSize > 0);
+		Assert.isTrue(bufferSize > 0, "Buffer size must be larger than zero");
 		this.bufferSize = bufferSize;
 	}
 
@@ -91,22 +82,38 @@ public class ServletHttpHandlerAdapter extends HttpHandlerAdapterSupport impleme
 		return this.bufferSize;
 	}
 
+	public void setDataBufferFactory(DataBufferFactory dataBufferFactory) {
+		Assert.notNull(dataBufferFactory, "DataBufferFactory must not be null");
+		this.dataBufferFactory = dataBufferFactory;
+	}
+
+	public DataBufferFactory getDataBufferFactory() {
+		return this.dataBufferFactory;
+	}
+
+
+	// The Servlet.service method
 
 	@Override
 	public void service(ServletRequest request, ServletResponse response) throws IOException {
-
 		// Start async before Read/WriteListener registration
 		AsyncContext asyncContext = request.startAsync();
 
-		ServerHttpRequest httpRequest = new ServletServerHttpRequest(
-				((HttpServletRequest) request), asyncContext, getDataBufferFactory(), getBufferSize());
-
-		ServerHttpResponse httpResponse = new ServletServerHttpResponse(
-				((HttpServletResponse) response), asyncContext, getDataBufferFactory(), getBufferSize());
+		ServerHttpRequest httpRequest = createRequest(((HttpServletRequest) request), asyncContext);
+		ServerHttpResponse httpResponse = createResponse(((HttpServletResponse) response), asyncContext);
 
 		HandlerResultSubscriber subscriber = new HandlerResultSubscriber(asyncContext);
 		getHttpHandler().handle(httpRequest, httpResponse).subscribe(subscriber);
 	}
+
+	protected ServerHttpRequest createRequest(HttpServletRequest request, AsyncContext context) throws IOException {
+		return new ServletServerHttpRequest(request, context, getDataBufferFactory(), getBufferSize());
+	}
+
+	protected ServerHttpResponse createResponse(HttpServletResponse response, AsyncContext context) throws IOException {
+		return new ServletServerHttpResponse(response, context, getDataBufferFactory(), getBufferSize());
+	}
+
 
 	// Other Servlet methods...
 
@@ -132,7 +139,6 @@ public class ServletHttpHandlerAdapter extends HttpHandlerAdapterSupport impleme
 	private class HandlerResultSubscriber implements Subscriber<Void> {
 
 		private final AsyncContext asyncContext;
-
 
 		public HandlerResultSubscriber(AsyncContext asyncContext) {
 			this.asyncContext = asyncContext;

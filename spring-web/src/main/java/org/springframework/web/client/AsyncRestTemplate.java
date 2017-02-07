@@ -44,7 +44,7 @@ import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.util.Assert;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureAdapter;
-import org.springframework.web.util.AbstractUriTemplateHandler;
+import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriTemplateHandler;
 
 /**
@@ -161,11 +161,20 @@ public class AsyncRestTemplate extends InterceptingAsyncHttpAccessor implements 
 	 * @param defaultUriVariables the default URI variable values
 	 * @since 4.3
 	 */
+	@SuppressWarnings("deprecation")
 	public void setDefaultUriVariables(Map<String, ?> defaultUriVariables) {
 		UriTemplateHandler handler = this.syncTemplate.getUriTemplateHandler();
-		Assert.isInstanceOf(AbstractUriTemplateHandler.class, handler,
-				"Can only use this property in conjunction with a DefaultUriTemplateHandler");
-		((AbstractUriTemplateHandler) handler).setDefaultUriVariables(defaultUriVariables);
+		if (handler instanceof DefaultUriBuilderFactory) {
+			((DefaultUriBuilderFactory) handler).setDefaultUriVariables(defaultUriVariables);
+		}
+		else if (handler instanceof org.springframework.web.util.AbstractUriTemplateHandler) {
+			((org.springframework.web.util.AbstractUriTemplateHandler) handler)
+					.setDefaultUriVariables(defaultUriVariables);
+		}
+		else {
+			throw new IllegalArgumentException(
+					"This property is not supported with the configured UriTemplateHandler.");
+		}
 	}
 
 	/**

@@ -1,13 +1,14 @@
 buildscript {
 	repositories {
-		maven { url "https://repo.spring.io/plugins-release" }
 		maven { url "http://dl.bintray.com/kotlin/kotlin-eap-1.1" }
+		maven { url "https://repo.spring.io/plugins-snapshot" }
 	}
 	dependencies {
 		classpath("org.springframework.build.gradle:propdeps-plugin:0.0.7")
 		classpath("org.asciidoctor:asciidoctor-gradle-plugin:1.5.3")
-		classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.0.6"
+		classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.1.0-beta-38")
 		classpath("io.spring.gradle:docbook-reference-plugin:0.3.1")
+		classpath("io.spring.gradle:dependency-management-plugin:1.0.0.BUILD-SNAPSHOT")
 	}
 }
 
@@ -46,23 +47,23 @@ configure(allprojects) { project ->
 	ext.elApiVersion           = "3.0.1-b04"
 	ext.fileuploadVersion      = "1.3.2"
 	ext.freemarkerVersion      = "2.3.25-incubating"
-	ext.groovyVersion          = "2.4.7"
+	ext.groovyVersion          = "2.4.8"
 	ext.gsonVersion            = "2.8.0"
 	ext.hamcrestVersion        = "1.3"
-	ext.hibernate5Version      = "5.2.6.Final"
-	ext.hibval5Version         = "5.4.0.Beta1"
+	ext.hibernate5Version      = "5.2.7.Final"
+	ext.hibval5Version         = "5.4.0.Final"
 	ext.hsqldbVersion          = "2.3.4"
 	ext.httpasyncVersion       = "4.1.2"
-	ext.httpclientVersion      = "4.5.2"
+	ext.httpclientVersion      = "4.5.3"
 	ext.interceptorApiVersion  = "1.2"
-	ext.jackson2Version        = "2.8.5"
+	ext.jackson2Version        = "2.8.6"
 	ext.javamailVersion        = "1.5.6"
 	ext.jaxbVersion            = "2.2.11"
 	ext.jaxwsVersion           = "2.2.11"
 	ext.jcaVersion             = "1.7"
-	ext.jettyVersion           = "9.4.0.v20161208"
+	ext.jettyVersion           = "9.4.1.v20170120"
 	ext.jmsVersion             = "2.0.1"
-	ext.jodaVersion            = "2.9.6"
+	ext.jodaVersion            = "2.9.7"
 	ext.jpaVersion             = "2.1.1"
 	ext.jsfVersion             = "2.2"
 	ext.jspVersion             = "2.3.2-b02"
@@ -70,21 +71,19 @@ configure(allprojects) { project ->
 	ext.junitVersion           = "4.12"
 	ext.junitJupiterVersion    = '5.0.0-M3'
 	ext.junitPlatformVersion   = '1.0.0-M3'
-	ext.kotlinVersion          = "1.0.6" // Also change kotlin-gradle-plugin version when upgrading
-	ext.log4jVersion           = '2.7'
-	ext.nettyVersion           = "4.1.6.Final"
+	ext.kotlinVersion          = "1.1.0-beta-38"  // also change kotlin-gradle-plugin version when upgrading
+	ext.log4jVersion           = '2.8'
+	ext.nettyVersion           = "4.1.8.Final"
 	ext.okhttpVersion          = "2.7.5"
-	ext.okhttp3Version         = "3.5.0"
+	ext.okhttp3Version         = "3.6.0"
 	ext.poiVersion             = "3.15"
 	ext.protobufVersion        = "3.1.0"
 	ext.quartzVersion          = "2.2.3"
-	ext.reactivestreamsVersion = "1.0.0"
-	ext.reactorCoreVersion     = '3.0.4.RELEASE'
-	ext.reactorNettyVersion    = '0.6.0.RELEASE'
-	ext.romeVersion            = "1.7.0"
-	ext.rxjavaVersion          = '1.2.4'
+	ext.reactorVersion         = "Aluminium-BUILD-SNAPSHOT"
+	ext.romeVersion            = "1.7.1"
+	ext.rxjavaVersion          = '1.2.5'
 	ext.rxjavaAdapterVersion   = '1.2.1'
-	ext.rxjava2Version         = '2.0.3'
+	ext.rxjava2Version         = '2.0.4'
 	ext.rxnettyVersion         = '0.5.2-rc.5'
 	ext.servletVersion         = "3.1.0"
 	ext.slf4jVersion           = "1.7.22"
@@ -92,7 +91,7 @@ configure(allprojects) { project ->
 	ext.snifferVersion         = "1.15"
 	ext.testngVersion          = "6.10"
 	ext.tiles3Version          = "3.0.7"
-	ext.tomcatVersion          = "8.5.9"
+	ext.tomcatVersion          = "8.5.11"
 	ext.tyrusVersion           = "1.13"
 	ext.undertowVersion        = "1.4.8.Final"
 	ext.websocketVersion       = "1.1"
@@ -111,10 +110,6 @@ configure(allprojects) { project ->
 	// Kotlin compiler does not support JDK 9 yet, see https://youtrack.jetbrains.com/issue/KT-14988
 	if (!JavaVersion.current().java9Compatible) {
 		apply plugin: "kotlin"
-		//compileKotlin {
-		//	kotlinOptions.apiVersion = 1.0
-		//	kotlinOptions.languageVersion = 1.0
-		//}
 	}
 
 	configurations {
@@ -123,18 +118,13 @@ configure(allprojects) { project ->
 	}
 
 	configurations.all {
-		// check for updates every build
+		// Check for updates every build
 		resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
 
-		// consistent netty version (e.g. clashes between netty-all vs netty-common)
+		// Consistent netty version (e.g. clashes between netty-all vs netty-common)
 		resolutionStrategy.eachDependency { DependencyResolveDetails details ->
 			if (details.requested.group == 'io.netty') {
 				details.useVersion nettyVersion
-			}
-		}
-		resolutionStrategy.eachDependency { DependencyResolveDetails details ->
-			if (details.requested.name == 'reactor-core' && details.requested.version.startsWith('3.')) {
-				details.useVersion reactorCoreVersion
 			}
 		}
 	}
@@ -180,16 +170,17 @@ configure(allprojects) { project ->
 	}
 
 	repositories {
+		maven { url "http://dl.bintray.com/kotlin/kotlin-eap-1.1" }
 		maven { url "https://repo.spring.io/libs-release" }
 		maven { url "https://repo.spring.io/milestone" }
-		maven { url "http://dl.bintray.com/kotlin/kotlin-eap-1.1" }
+		maven { url "https://repo.spring.io/libs-snapshot" }
 	}
 
 	dependencies {
 		testCompile("junit:junit:${junitVersion}") {
 			exclude group:'org.hamcrest', module:'hamcrest-core'
 		}
-		testCompile("org.mockito:mockito-core:2.2.11") {
+		testCompile("org.mockito:mockito-core:2.6.1") {
 			exclude group:'org.hamcrest', module:'hamcrest-core'
 		}
 		testCompile("org.hamcrest:hamcrest-all:${hamcrestVersion}")
@@ -259,11 +250,21 @@ configure(allprojects) { project ->
 configure(subprojects - project(":spring-build-src")) { subproject ->
 	apply plugin: "merge"
 	apply from: "${gradleScriptDir}/publish-maven.gradle"
+	apply plugin: "io.spring.dependency-management"
+
+	dependencyManagement {
+		imports {
+			mavenBom "io.projectreactor:reactor-bom:${reactorVersion}"
+		}
+		resolutionStrategy {
+			cacheChangingModulesFor 0, 'seconds'
+		}
+		applyMavenExclusions = false
+	}
 
 	configurations {
 		jacoco
 	}
-
 	dependencies {
 		jacoco("org.jacoco:org.jacoco.agent:0.7.5.201505241946:runtime")
 	}
@@ -341,7 +342,7 @@ project("spring-core") {
 	// further transformed by the JarJar task to depend on org.springframework.asm; this
 	// avoids including two different copies of asm unnecessarily.
 	def cglibVersion = "3.2.4"
-	def objenesisVersion = "2.4"
+	def objenesisVersion = "2.5.1"
 
 	configurations {
 		jarjar
@@ -361,9 +362,9 @@ project("spring-core") {
 					configurations.cglib.each { originalJar ->
 						zipfileset(src: originalJar)
 					}
-					// repackage net.sf.cglib => org.springframework.cglib
+					// Repackage net.sf.cglib => org.springframework.cglib
 					rule(pattern: "net.sf.cglib.**", result: "org.springframework.cglib.@1")
-					// as mentioned above, transform cglib"s internal asm dependencies from
+					// As mentioned above, transform cglib"s internal asm dependencies from
 					// org.objectweb.asm => org.springframework.asm. Doing this counts on the
 					// the fact that Spring and cglib depend on the same version of asm!
 					rule(pattern: "org.objectweb.asm.**", result: "org.springframework.asm.@1")
@@ -384,7 +385,7 @@ project("spring-core") {
 					configurations.objenesis.each { originalJar ->
 						zipfileset(src: originalJar)
 					}
-					// repackage org.objenesis => org.springframework.objenesis
+					// Repackage org.objenesis => org.springframework.objenesis
 					rule(pattern: "org.objenesis.**", result: "org.springframework.objenesis.@1")
 				}
 			}
@@ -403,13 +404,13 @@ project("spring-core") {
 		optional("org.aspectj:aspectjweaver:${aspectjVersion}")
 		optional("org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}")
 		optional("org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}")
-		optional("org.reactivestreams:reactive-streams:${reactivestreamsVersion}")
-		optional("io.projectreactor:reactor-core:${reactorCoreVersion}")
+		optional("org.reactivestreams:reactive-streams")
+		optional("io.projectreactor:reactor-core")
 		optional "io.reactivex:rxjava:${rxjavaVersion}"
 		optional "io.reactivex.rxjava2:rxjava:${rxjava2Version}"
 		optional "io.reactivex:rxjava-reactive-streams:${rxjavaAdapterVersion}"
 		optional("io.netty:netty-buffer:${nettyVersion}")
-		testCompile("io.projectreactor.addons:reactor-test:${reactorCoreVersion}")
+		testCompile("io.projectreactor.addons:reactor-test")
 		testCompile("javax.xml.bind:jaxb-api:${jaxbVersion}")
 		testCompile("org.apache.tomcat.embed:tomcat-embed-core:${tomcatVersion}")
 		testCompile("org.xmlunit:xmlunit-matchers:${xmlunitVersion}")
@@ -419,7 +420,7 @@ project("spring-core") {
 	}
 
 	jar {
-		// inline repackaged cglib classes directly into the spring-core jar
+		// Inline repackaged cglib classes directly into spring-core jar
 		dependsOn cglibRepackJar
 		from(zipTree(cglibRepackJar.archivePath)) {
 			include "org/springframework/cglib/**"
@@ -439,7 +440,6 @@ project("spring-beans") {
 		compile(project(":spring-core"))
 		compile(files(project(":spring-core").cglibRepackJar))
 		optional("javax.inject:javax.inject:1")
-		optional("javax.el:javax.el-api:${elApiVersion}")
 		optional("org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}")
 		optional("org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}")
 		optional("org.yaml:snakeyaml:${snakeyamlVersion}")
@@ -458,7 +458,7 @@ project("spring-beans-groovy") {
 		optional("org.codehaus.groovy:groovy-all:${groovyVersion}")
 	}
 
-	// this module's Java and Groovy sources need to be compiled together
+	// This module's Java and Groovy sources need to be compiled together.
 	compileJava.enabled = false
 	sourceSets {
 		main {
@@ -587,8 +587,8 @@ project("spring-messaging") {
 		compile(project(":spring-core"))
 		compile(project(":spring-context"))
 		optional(project(":spring-oxm"))
-		optional("io.projectreactor:reactor-core:${reactorCoreVersion}")
-		optional("io.projectreactor.ipc:reactor-netty:${reactorNettyVersion}")
+		optional("io.projectreactor:reactor-core")
+		optional("io.projectreactor.ipc:reactor-netty")
 		optional("io.netty:netty-all:${nettyVersion}")
 		optional("org.eclipse.jetty.websocket:websocket-server:${jettyVersion}") {
 			exclude group: "javax.servlet", module: "javax.servlet-api"
@@ -678,6 +678,8 @@ project("spring-jdbc") {
 		optional("com.h2database:h2:1.4.193")
 		optional("org.apache.derby:derby:10.13.1.1")
 		optional("org.apache.derby:derbyclient:10.13.1.1")
+		optional("org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}")
+		optional("org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}")
 	}
 }
 
@@ -722,7 +724,6 @@ project("spring-context-indexer") {
 project("spring-web") {
 	description = "Spring Web"
 
-
 	apply plugin: "groovy"
 
 	dependencies {
@@ -740,15 +741,16 @@ project("spring-web") {
 		optional("org.codehaus.groovy:groovy-all:${groovyVersion}")
 		optional("com.caucho:hessian:4.0.38")
 		optional("commons-fileupload:commons-fileupload:${fileuploadVersion}")
-		optional("org.reactivestreams:reactive-streams:${reactivestreamsVersion}")
-		optional("io.projectreactor:reactor-core:${reactorCoreVersion}")
-		optional("io.projectreactor.ipc:reactor-netty:${reactorNettyVersion}")
+		optional("org.reactivestreams:reactive-streams")
+		optional("io.projectreactor:reactor-core")
+		optional("io.projectreactor.ipc:reactor-netty")
 		optional("io.reactivex:rxnetty-http:${rxnettyVersion}") {
 			exclude group: 'io.reactivex', module: 'rxjava'
 		}
 		optional("io.reactivex:rxjava:${rxjavaVersion}")
 		optional "io.reactivex.rxjava2:rxjava:${rxjava2Version}"
 		optional("io.reactivex:rxjava-reactive-streams:${rxjavaAdapterVersion}")
+		optional("org.apache.tomcat.embed:tomcat-embed-core:${tomcatVersion}")
 		optional("io.undertow:undertow-core:${undertowVersion}")
 		optional("org.jboss.xnio:xnio-api:${xnioVersion}")
 		optional("io.netty:netty-buffer:${nettyVersion}")  // temporarily for JsonObjectDecoder
@@ -781,7 +783,7 @@ project("spring-web") {
 		optional("javax.mail:javax.mail-api:${javamailVersion}")
 		optional("org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}")
 		testCompile(project(":spring-context-support"))  // for JafMediaTypeFactory
-		testCompile("io.projectreactor.addons:reactor-test:${reactorCoreVersion}")
+		testCompile("io.projectreactor.addons:reactor-test")
 		testCompile("org.apache.taglibs:taglibs-standard-jstlel:1.2.1") {
 			exclude group: "org.apache.taglibs", module: "taglibs-standard-spec"
 		}
@@ -809,14 +811,14 @@ project("spring-web") {
 	}
 }
 
-project("spring-web-reactive") {
-	description = "Spring Web Reactive"
+project("spring-webflux") {
+	description = "Spring WebFlux"
 
 	dependencies {
 		compile(project(":spring-core"))
 		compile(project(":spring-web"))
-		compile "org.reactivestreams:reactive-streams:${reactivestreamsVersion}"
-		compile "io.projectreactor:reactor-core:${reactorCoreVersion}"
+		compile "org.reactivestreams:reactive-streams"
+		compile "io.projectreactor:reactor-core"
 		optional(project(":spring-context-support"))  // for FreeMarker support
 		provided "javax.servlet:javax.servlet-api:${servletVersion}"
 		optional("javax.xml.bind:jaxb-api:${jaxbVersion}")
@@ -824,7 +826,7 @@ project("spring-web-reactive") {
 		optional("org.freemarker:freemarker:${freemarkerVersion}")
 		optional "org.apache.httpcomponents:httpclient:${httpclientVersion}"
 		optional('org.webjars:webjars-locator:0.32')
-		optional("io.projectreactor.ipc:reactor-netty:${reactorNettyVersion}")
+		optional("io.projectreactor.ipc:reactor-netty")
 		optional("io.reactivex:rxnetty-http:${rxnettyVersion}") {
 			exclude group: 'io.reactivex', module: 'rxjava'
 		}
@@ -843,7 +845,7 @@ project("spring-web-reactive") {
 		}
 		optional("org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}")
 		optional("org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}")
-		testCompile("io.projectreactor.addons:reactor-test:${reactorCoreVersion}")
+		testCompile("io.projectreactor.addons:reactor-test")
 		testCompile("javax.validation:validation-api:${beanvalVersion}")
 		testCompile("org.hibernate:hibernate-validator:${hibval5Version}")
 		testCompile("org.apache.tomcat:tomcat-util:${tomcatVersion}")
@@ -856,7 +858,7 @@ project("spring-web-reactive") {
 		testCompile("com.fasterxml:aalto-xml:1.0.0")
 		testCompile("org.xmlunit:xmlunit-matchers:${xmlunitVersion}")
 		testCompile("org.slf4j:slf4j-jcl:${slf4jVersion}")
-	    testCompile("com.squareup.okhttp3:mockwebserver:${okhttp3Version}")
+		testCompile("com.squareup.okhttp3:mockwebserver:${okhttp3Version}")
 		testRuntime("javax.el:javax.el-api:${elApiVersion}")
 		testRuntime("org.glassfish:javax.el:3.0.1-b08")
 		testRuntime("com.sun.xml.bind:jaxb-core:${jaxbVersion}")
@@ -865,6 +867,18 @@ project("spring-web-reactive") {
 		testRuntime("org.jboss.xnio:xnio-nio:${xnioVersion}")
 		testRuntime("org.jboss.logging:jboss-logging:3.3.0.Final")
 		testRuntime("org.webjars:underscorejs:1.8.3")
+		testRuntime("org.jruby:jruby:9.1.7.0")
+		testRuntime("org.python:jython-standalone:2.5.3")
+		// Ideally, kotlin-script-runtime should be enough for JSR-223, but that's not
+		// the case yet, so we depend on kotlin-script-util and exclude these
+		// dependencies only used for artifact retrieval. Point raised to Kotlin team.
+		testRuntime("org.jetbrains.kotlin:kotlin-compiler:${kotlinVersion}")
+		testCompile("org.jetbrains.kotlin:kotlin-script-runtime:${kotlinVersion}")
+		testRuntime("org.jetbrains.kotlin:kotlin-script-util:${kotlinVersion}") {
+			exclude group: "com.jcabi", module: "jcabi-aether"
+			exclude group: "org.apache.maven", module: "maven-core"
+			exclude group: "org.sonatype.aether", module: "aether-api"
+		}
 	}
 
 	if (JavaVersion.current().java9Compatible) {
@@ -967,17 +981,18 @@ project("spring-webmvc") {
 		testCompile("joda-time:joda-time:${jodaVersion}")
 		testCompile("org.slf4j:slf4j-jcl:${slf4jVersion}")
 		testCompile("org.mozilla:rhino:1.7.7.1")
-		testRuntime("org.jruby:jruby:9.1.6.0")
+		testRuntime("org.jruby:jruby:9.1.7.0")
 		testRuntime("org.python:jython-standalone:2.5.3")
 		// Ideally, kotlin-script-runtime should be enough for JSR-223, but that's not
 		// the case yet, so we depend on kotlin-script-util and exclude these
 		// dependencies only used for artifact retrieval. Point raised to Kotlin team.
-		//testRuntime("org.jetbrains.kotlin:kotlin-compiler:${kotlinVersion}")
-		//testRuntime("org.jetbrains.kotlin:kotlin-script-util:${kotlinVersion}") {
-		//	exclude group: "com.jcabi", module: "jcabi-aether"
-		//	exclude group: "org.apache.maven", module: "maven-core"
-		//	exclude group: "org.sonatype.aether", module: "aether-api"
-		//}
+		testRuntime("org.jetbrains.kotlin:kotlin-compiler:${kotlinVersion}")
+		testCompile("org.jetbrains.kotlin:kotlin-script-runtime:${kotlinVersion}")
+		testRuntime("org.jetbrains.kotlin:kotlin-script-util:${kotlinVersion}") {
+			exclude group: "com.jcabi", module: "jcabi-aether"
+			exclude group: "org.apache.maven", module: "maven-core"
+			exclude group: "org.sonatype.aether", module: "aether-api"
+		}
 		testRuntime("org.webjars:underscorejs:1.8.3")
 		testRuntime("org.glassfish:javax.el:3.0.1-b08")
 		testRuntime("com.sun.xml.bind:jaxb-core:${jaxbVersion}")
@@ -1025,8 +1040,8 @@ project("spring-websocket") {
 		optional("com.fasterxml.jackson.core:jackson-databind:${jackson2Version}")
 		testCompile("org.apache.tomcat.embed:tomcat-embed-core:${tomcatVersion}")
 		testCompile("org.apache.tomcat.embed:tomcat-embed-websocket:${tomcatVersion}")
-		testCompile("io.projectreactor:reactor-core:${reactorCoreVersion}")
-		testCompile("io.projectreactor.ipc:reactor-netty:${reactorNettyVersion}")
+		testCompile("io.projectreactor:reactor-core")
+		testCompile("io.projectreactor.ipc:reactor-netty")
 		testCompile("io.netty:netty-all:${nettyVersion}")
 		testCompile("org.slf4j:slf4j-jcl:${slf4jVersion}")
 		testRuntime("org.jboss.xnio:xnio-nio:${xnioVersion}")
@@ -1070,15 +1085,15 @@ project("spring-test") {
 		optional("org.codehaus.groovy:groovy-all:${groovyVersion}")
 		optional("org.hamcrest:hamcrest-core:${hamcrestVersion}")
 		optional("org.xmlunit:xmlunit-matchers:${xmlunitVersion}")
-		optional("net.sourceforge.htmlunit:htmlunit:2.23")
+		optional("net.sourceforge.htmlunit:htmlunit:2.24")
 		optional("org.seleniumhq.selenium:htmlunit-driver:2.23.2")
 		optional("org.seleniumhq.selenium:selenium-java:3.0.1") {
 			exclude group: "io.netty", module: "netty"
 		}
 		optional("org.skyscreamer:jsonassert:1.4.0")
 		optional("com.jayway.jsonpath:json-path:2.2.0")
-		optional("org.reactivestreams:reactive-streams:${reactivestreamsVersion}")
-		optional("io.projectreactor:reactor-core:${reactorCoreVersion}")
+		optional("org.reactivestreams:reactive-streams")
+		optional("io.projectreactor:reactor-core")
 		testCompile(project(":spring-context-support"))
 		testCompile(project(":spring-oxm"))
 		testCompile("javax.mail:javax.mail-api:${javamailVersion}")
@@ -1176,6 +1191,12 @@ project("spring-aspects") {
 
 project("spring-framework-bom") {
 	description = "Spring Framework (Bill of Materials)"
+
+	dependencyManagement {
+		generatedPomCustomization {
+			enabled = false
+		}
+	}
 
 	configurations.archives.artifacts.clear()
 	artifacts {
@@ -1308,9 +1329,7 @@ configure(rootProject) {
 
 		doFirst {
 			classpath = files(
-                // ensure Servlet 3.x has precedence on the javadoc classpath
-                project(":spring-webmvc").sourceSets.main.compileClasspath.files.find { it =~ "servlet-api" },
-				// ensure the javadoc process can resolve types compiled from .aj sources
+				// Ensure the javadoc process can resolve types compiled from .aj sources
 				project(":spring-aspects").sourceSets.main.output
 			)
 			classpath += files(subprojects.collect { it.sourceSets.main.compileClasspath })
@@ -1443,7 +1462,7 @@ configure(rootProject) {
 
 	task wrapper(type: Wrapper) {
 		description = "Generates gradlew[.bat] scripts"
-		gradleVersion = '3.2.1'
+		gradleVersion = '3.3'
 
 		doLast() {
 			def gradleOpts = "-XX:MaxMetaspaceSize=1024m -Xmx1024m"

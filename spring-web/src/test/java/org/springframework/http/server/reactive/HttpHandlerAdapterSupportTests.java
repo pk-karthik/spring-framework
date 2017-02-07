@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ import java.util.Map;
 import org.junit.Test;
 import reactor.core.publisher.Mono;
 
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.test.MockServerHttpRequest;
 import org.springframework.mock.http.server.reactive.test.MockServerHttpResponse;
@@ -42,10 +41,10 @@ import static org.junit.Assert.fail;
 public class HttpHandlerAdapterSupportTests {
 
 	@Test
-	public void invalidContextPath() throws Exception {
-		testInvalidContextPath("  ", "contextPath must not be empty");
-		testInvalidContextPath("path", "contextPath must begin with '/'");
-		testInvalidContextPath("/path/", "contextPath must not end with '/'");
+	public void invalidContextPath() {
+		testInvalidContextPath("  ", "Context path must not be empty");
+		testInvalidContextPath("path", "Context path must begin with '/'");
+		testInvalidContextPath("/path/", "Context path must not end with '/'");
 	}
 
 	private void testInvalidContextPath(String contextPath, String errorMessage) {
@@ -59,7 +58,7 @@ public class HttpHandlerAdapterSupportTests {
 	}
 
 	@Test
-	public void match() throws Exception {
+	public void match() {
 		TestHttpHandler handler1 = new TestHttpHandler();
 		TestHttpHandler handler2 = new TestHttpHandler();
 		TestHttpHandler handler3 = new TestHttpHandler();
@@ -76,7 +75,7 @@ public class HttpHandlerAdapterSupportTests {
 	}
 
 	@Test
-	public void matchWithContextPathEqualToPath() throws Exception {
+	public void matchWithContextPathEqualToPath() {
 		TestHttpHandler handler1 = new TestHttpHandler();
 		TestHttpHandler handler2 = new TestHttpHandler();
 		TestHttpHandler handler3 = new TestHttpHandler();
@@ -93,9 +92,11 @@ public class HttpHandlerAdapterSupportTests {
 	}
 
 	@Test
-	public void matchWithNativeContextPath() throws Exception {
-		MockServerHttpRequest request = new MockServerHttpRequest(HttpMethod.GET, "/yet/another/path");
-		request.setContextPath("/yet");  // contextPath in underlying request
+	public void matchWithNativeContextPath() {
+		MockServerHttpRequest request = MockServerHttpRequest
+				.get("/yet/another/path")
+				.contextPath("/yet")  // contextPath in underlying request
+				.build();
 
 		TestHttpHandler handler = new TestHttpHandler();
 		Map<String, HttpHandler> map = Collections.singletonMap("/another/path", handler);
@@ -145,7 +146,7 @@ public class HttpHandlerAdapterSupportTests {
 		}
 
 		public ServerHttpResponse handle(String path) {
-			ServerHttpRequest request = new MockServerHttpRequest(HttpMethod.GET, path);
+			ServerHttpRequest request = MockServerHttpRequest.get(path).build();
 			return handle(request);
 		}
 

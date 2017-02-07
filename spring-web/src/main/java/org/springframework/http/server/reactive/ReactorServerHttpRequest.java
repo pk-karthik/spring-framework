@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.http.server.reactive;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Optional;
 
 import io.netty.handler.codec.http.cookie.Cookie;
 import reactor.core.publisher.Flux;
@@ -55,21 +56,19 @@ public class ReactorServerHttpRequest extends AbstractServerHttpRequest {
 	}
 
 	private static URI initUri(HttpServerRequest channel) {
-		Assert.notNull("'channel' must not be null");
+		Assert.notNull(channel, "'channel' must not be null");
+		InetSocketAddress address = channel.remoteAddress();
+		String requestUri = channel.uri();
+		return (address != null ? getBaseUrl(address).resolve(requestUri) : URI.create(requestUri));
+	}
+
+	private static URI getBaseUrl(InetSocketAddress address) {
 		try {
-			URI uri = new URI(channel.uri());
-			InetSocketAddress remoteAddress = channel.remoteAddress();
-			return new URI(
-					uri.getScheme(),
-					uri.getUserInfo(),
-					(remoteAddress != null ? remoteAddress.getHostString() : null),
-					(remoteAddress != null ? remoteAddress.getPort() : -1),
-					uri.getPath(),
-					uri.getQuery(),
-					uri.getFragment());
+			return new URI(null, null, address.getHostString(), address.getPort(), null, null, null);
 		}
 		catch (URISyntaxException ex) {
-			throw new IllegalStateException("Could not get URI: " + ex.getMessage(), ex);
+			// Should not happen...
+			throw new IllegalStateException(ex);
 		}
 	}
 
@@ -101,6 +100,11 @@ public class ReactorServerHttpRequest extends AbstractServerHttpRequest {
 			}
 		}
 		return cookies;
+	}
+
+	@Override
+	public Optional<InetSocketAddress> getRemoteAddress() {
+		return Optional.ofNullable(this.request.remoteAddress());
 	}
 
 	@Override
